@@ -7,6 +7,7 @@ templates:
   - template: Planetary Overview
     title: Talos-II
     image: talos-ii.png
+    model: talos-ii
     affiliation: '[Endfield Industries](https://en.wikipedia.org/wiki/Endfield_Industries), [Lizards](/characters/species/main-races/lizards/) (2nd party)'
     atmosphere_color: Blue
     atmosphere_toxicity: Breathable

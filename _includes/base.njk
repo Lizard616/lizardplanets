@@ -31,7 +31,10 @@
     />
     <style>:root { --site-bg-image: url("/images/site-background-dark.webp"); }</style>
     <link rel="stylesheet" href="/assets/styles.css" />
-    {% if pagefindSearch %}<link rel="stylesheet" href="/pagefind/pagefind-component-ui.css" />{% endif %}
+    {% if pagefindSearch %}
+      <pagefind-config bundle-path="{{ sitePathPrefix }}pagefind/" base-url="{{ sitePathPrefix }}"></pagefind-config>
+      <link rel="stylesheet" href="/pagefind/pagefind-component-ui.css" />
+    {% endif %}
     <script defer src="/assets/theme.js"></script>
     <script defer src="/assets/webgl-model.js"></script>
     <script defer src="/assets/template-media-viewer.js"></script>

@@ -1,0 +1,9 @@
+---
+layout: base.njk
+---
+<article class="wiki-article"{% if not pagefindExclude %} data-pagefind-body{% endif %}>
+  <h1 class="wiki-title">{{ title }}</h1>
+  <div class="wiki-body">
+    {{ content | renderBodyShortcodes(templates) | renderWebglModels | safe }}
+  </div>
+</article>

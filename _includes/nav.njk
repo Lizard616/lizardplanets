@@ -1,0 +1,122 @@
+<header class="header">
+  <div class="container-lg header-inner">
+  <a class="brand-logo-link" href="/" aria-label="Home">
+    <img class="brand-logo" src="/images/Site-logo.webp" alt="Lizard-Planets logo" />
+  </a>
+  <a class="brand" href="/">{{ site.title }}</a>
+  <div class="header-actions">
+    <a
+      class="page-count-badge page-count-badge--header"
+      href="/all-pages/"
+      title="Browse all wiki pages"
+      aria-label="{{ collections.all | length }} wiki pages"
+    >
+      {{ collections.all | length }} pages
+    </a>
+    <button
+      class="menu-toggle"
+      id="menu-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="main-nav"
+      aria-label="Toggle navigation"
+    >
+      Menu
+    </button>
+  </div>
+  <nav class="nav" id="main-nav">
+    <div class="nav-meta">
+      <a
+        class="page-count-badge page-count-badge--menu"
+        href="/all-pages/"
+        title="Browse all wiki pages"
+        aria-label="{{ collections.all | length }} wiki pages"
+      >
+        {{ collections.all | length }} pages
+      </a>
+    </div>
+    {% for section, children in site.menu %}
+      <div class="nav-item">
+        <a class="nav-link" href="#">{{ section }}</a>
+
+        {% if children | hasKeys %}
+          {# Section has subsections #}
+          <div class="dropdown-menu">
+            {% for sub, grandchildren in children %}
+              {% set catPath = section + "/" + sub %}
+              {% set subNode = collections.navTree[catPath] %}
+
+              {% if grandchildren | hasKeys %}
+                {# Sub has further groups — each grandchild is its own flyout #}
+                <div class="menu-node has-children">
+                  <a class="dropdown-link" href="#">{{ sub }}</a>
+                  <div class="submenu-panel">
+                    {% for item, _ in grandchildren %}
+                      {% set itemPath = catPath + "/" + item %}
+                      {% set itemNode = collections.navTree[itemPath] %}
+                      {% set itemHasPages = itemNode and (itemNode.primary | length or itemNode.more | length) %}
+                      <div class="menu-node{% if itemHasPages %} has-children{% endif %}">
+                        <a class="dropdown-link" href="#">{{ item }}</a>
+                        {% if itemHasPages %}
+                          <div class="submenu-panel">
+                            {% for page in itemNode.primary %}
+                              <a class="dropdown-link" href="{{ page.url }}">{{ page.data.title }}</a>
+                            {% endfor %}
+                            {% if itemNode.more | length %}
+                              <a class="dropdown-link nav-more-link" href="{{ itemPath | categoryPathToUrl }}">More...</a>
+                            {% endif %}
+                          </div>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+              {% else %}
+                {# Sub is a leaf — show pages in a flyout panel #}
+                {% set hasPages = subNode and (subNode.primary | length or subNode.more | length) %}
+                <div class="menu-node{% if hasPages %} has-children{% endif %}">
+                  <a class="dropdown-link" href="#">{{ sub }}</a>
+                  {% if hasPages %}
+                    <div class="submenu-panel">
+                      {% for page in subNode.primary %}
+                        <a class="dropdown-link" href="{{ page.url }}">{{ page.data.title }}</a>
+                      {% endfor %}
+                      {% if subNode.more | length %}
+                        <a class="dropdown-link nav-more-link" href="{{ catPath | categoryPathToUrl }}">More...</a>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+            {% endfor %}
+          </div>
+
+        {% else %}
+          {# Flat section (e.g. The Story, Policies) — pages drop down directly #}
+          {% set sectionNode = collections.navTree[section] %}
+          {% if sectionNode and (sectionNode.primary | length or sectionNode.more | length) %}
+            <div class="dropdown-menu">
+              {% for page in sectionNode.primary %}
+                <a class="dropdown-link" href="{{ page.url }}">{{ page.data.title }}</a>
+              {% endfor %}
+              {% if sectionNode.more | length %}
+                <a class="dropdown-link nav-more-link" href="{{ section | categoryPathToUrl }}">More...</a>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endif %}
+
+      </div>
+    {% endfor %}
+
+    <div class="nav-item">
+      <a class="nav-link" href="/all-pages/">All Pages</a>
+    </div>
+    <div class="nav-item">
+      <a class="nav-link" href="/search/">Search</a>
+    </div>
+  </nav>
+  </div>
+</header>

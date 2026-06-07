@@ -1,0 +1,14 @@
+{#
+  macros.njk — shared Nunjucks helpers.
+  Usage: {% from "macros.njk" import wikiLink, notice %}
+#}
+
+{# Render a plain internal link with automatic slug-based href #}
+{% macro wikiLink(label, slug) %}
+  <a href="/{{ slug }}/">{{ label }}</a>
+{% endmacro %}
+
+{# Render a styled notice banner (stub, mature, etc.) #}
+{% macro notice(type, message) %}
+  <div class="wiki-notice wiki-{{ type }}">{{ message }}</div>
+{% endmacro %}

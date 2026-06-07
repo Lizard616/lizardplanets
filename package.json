@@ -1,0 +1,20 @@
+{
+  "name": "lizard-planets-wiki",
+  "version": "0.1.0",
+  "description": "Static site build for the Lizard-Planets Wiki export",
+  "scripts": {
+    "build": "eleventy",
+    "start": "eleventy --serve --quiet",
+    "generate:index": "node scripts/generate-category-index-md.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "CC-BY-NC-ND-4.0",
+  "devDependencies": {
+    "@11ty/eleventy": "^3.1.2",
+    "cheerio": "^1.2.0",
+    "markdown-it": "^14.1.0",
+    "pagefind": "^1.5.2"
+  }
+}

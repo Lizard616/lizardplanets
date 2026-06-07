@@ -1,0 +1,14 @@
+<section class="wiki-template scroll-box-template">
+  <h3 class="template-heading">{{ template.name or template.title or "Scroll" }}</h3>
+  <div class="scroll-box-body">
+    {% if template.items and template.items | length > 0 %}
+      <ul class="scroll-box-list">
+        {% for item in template.items %}
+          <li>{{ item | renderTemplateValue(templates) | safe }}</li>
+        {% endfor %}
+      </ul>
+    {% elseif template.text %}
+      <div class="scroll-box-text">{{ template.text | renderTemplateValue(templates) | safe }}</div>
+    {% endif %}
+  </div>
+</section>

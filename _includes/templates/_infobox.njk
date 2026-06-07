@@ -1,0 +1,28 @@
+{% set tpl = template %}
+{% set heading = tpl.title or title %}
+<section class="wiki-template info-template">
+  {% if heading %}
+    <h2 class="template-heading">{{ heading }}</h2>
+  {% endif %}
+  {% if tpl.image %}
+    <figure class="template-image">
+      <img src="/images/{{ tpl.image }}" alt="{{ heading or tpl.image }}" loading="lazy" />
+      {% if tpl.caption %}
+        <figcaption>{{ tpl.caption | renderTemplateValue(templates) | safe }}</figcaption>
+      {% endif %}
+    </figure>
+  {% endif %}
+  {% set ignored = ["template", "title", "image", "caption"] %}
+  <table class="template-table">
+    <tbody>
+      {% for key, value in tpl %}
+        {% if key not in ignored and value != null and value != "" %}
+          <tr>
+            <th>{{ key | replace("_", " ") | capitalize }}</th>
+            <td>{{ value | renderTemplateValue(templates) | safe }}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</section>

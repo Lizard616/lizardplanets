@@ -1,0 +1,14 @@
+<section class="wiki-template gallery-template">
+  <div class="gallery-grid">
+    {% for image in template.images or [] %}
+      <figure class="gallery-item">
+        {% if image.file %}
+          <img src="/images/{{ image.file }}" alt="{{ image.caption or image.file }}" loading="lazy" />
+        {% endif %}
+        {% if image.caption %}
+          <figcaption>{{ image.caption | renderTemplateValue(templates) | safe }}</figcaption>
+        {% endif %}
+      </figure>
+    {% endfor %}
+  </div>
+</section>

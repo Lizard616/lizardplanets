@@ -1,0 +1,66 @@
+{
+  "slug": "earth",
+  "displayName": "Earth",
+
+  "textures": {
+    "day": "/assets/textures/earth/tex-col.png",
+    "secb": "/assets/textures/earth/tex-secb.png",
+    "ring": ""
+  },
+
+  "ring": {
+    "innerRadius": 1.22,
+    "outerRadius": 5.51,
+    "segments": 128
+  },
+
+  "body": {
+    "planetRadius": 1.0,
+    "atmosphereRadius": 1.016
+  },
+
+  "atmosphere": {
+    "scaleHeights": {
+      "rayleigh": 0.001255704,
+      "mie": 0.000188353,
+      "ozone": 0.00392403,
+      "ozoneFalloff": 0.000784805
+    },
+    "coefficients": {
+      "rayleigh": [36.9518, 86.0085, 210.8801],
+      "mie": [24.8469, 24.8469, 24.8469],
+      "ozone": [3.8226, 11.4678, 0.541535]
+    },
+    "mieG": 0.8,
+    "sunIntensity": 20.0,
+    "exposure": 1.2,
+    "saturation": 1.2
+  },
+
+  "camera": {
+    "initial": {
+      "distance": 2.6,
+      "phi": 0.3,
+      "theta": 0.5
+    },
+    "minDistance": 1.12,
+    "maxDistance": 8,
+    "drag": 0.005,
+    "zoom": 0.002,
+    "damping": 5.5,
+    "throw": 0.32
+  },
+
+  "sun": {
+    "orbitSpeed": 0.06,
+    "elevation": 0.25
+  },
+
+  "animation": {
+    "cloudScrollSpeed": 0.0005
+  },
+
+  "mesh": {
+    "sphereResolution": 64
+  }
+}

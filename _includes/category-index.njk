@@ -1,0 +1,26 @@
+---
+layout: base.njk
+---
+<article class="wiki-article" data-pagefind-body>
+  <h1>{{ title }}</h1>
+  <div class="wiki-body">
+    {% set node = collections.navTree[categoryPath] %}
+    {% if node and (node.primary | length or node.more | length) %}
+      <ol class="page-list category-index-list">
+        {% for p in node.primary %}
+          <li><a href="{{ p.url }}">{{ p.data.title }}</a></li>
+        {% endfor %}
+        {% for p in node.more %}
+          <li><a href="{{ p.url }}">{{ p.data.title }}</a></li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      {% set fallback = collections.all | pagesUnderContentPath(categoryPath) %}
+      <ol class="page-list category-index-list">
+        {% for p in fallback %}
+          <li><a href="{{ p.url }}">{{ p.data.title }}</a></li>
+        {% endfor %}
+      </ol>
+    {% endif %}
+  </div>
+</article>

@@ -1,0 +1,12 @@
+---
+layout: base.njk
+---
+<section class="wiki-section" data-pagefind-body>
+  <h1 class="wiki-title">All Pages</h1>
+  <p class="source">Full article index — {{ collections.all | length }} pages</p>
+  <ul class="page-list">
+    {% for page in collections.all | sort(false, false, "data.title") %}
+      <li><a href="{{ page.url }}">{{ page.data.title or page.fileSlug }}</a></li>
+    {% endfor %}
+  </ul>
+</section>

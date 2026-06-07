@@ -1,5 +1,6 @@
 (function () {
-  const CONFIG_URL = "/assets/models/lizard-953-e.json";
+  const base = document.documentElement.dataset.base || "/";
+  const CONFIG_URL = `${base}assets/models/lizard-953-e.json`;
 
   function register(config) {
     if (!window.WebGLModels || !window.PlanetRenderer) {

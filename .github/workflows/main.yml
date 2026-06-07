@@ -38,6 +38,8 @@ jobs:
         run: npm ci
       - name: NPM build
         run: npm run build
+        env:
+          PATH_PREFIX: /lizardplanets/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

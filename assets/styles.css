@@ -37,7 +37,7 @@ body.wiki-theme {
   background:
     linear-gradient(180deg, rgba(2, 6, 14, 0.58) 0%, rgba(2, 8, 20, 0.62) 45%, rgba(2, 6, 14, 0.68) 100%),
     radial-gradient(circle at 20% 0%, rgba(7, 31, 67, 0.2), transparent 45%),
-    url("/images/site-background-dark.webp") center top / cover fixed no-repeat;
+    var(--site-bg-image) center top / cover fixed no-repeat;
   min-height: 100vh;
 }
 

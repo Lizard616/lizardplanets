@@ -83,8 +83,18 @@
     };
   }
 
+  function resolveAssetUrl(url) {
+    const raw = String(url || "").trim();
+    if (!raw || /^https?:\/\//i.test(raw) || !raw.startsWith("/")) return raw;
+    const base = document.documentElement.dataset.base || "/";
+    return `${base.replace(/\/$/, "")}${raw}`;
+  }
+
   function init(container, rawConfig) {
     const cfg = normalizeConfig(rawConfig);
+    cfg.textures.day = resolveAssetUrl(cfg.textures.day);
+    cfg.textures.secb = resolveAssetUrl(cfg.textures.secb);
+    if (cfg.ring.texture) cfg.ring.texture = resolveAssetUrl(cfg.ring.texture);
     const canvas = container.querySelector(".webgl-model-canvas");
     if (!canvas) return;
 

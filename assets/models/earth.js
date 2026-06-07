@@ -1,5 +1,6 @@
 (function () {
-  const CONFIG_URL = "/assets/models/earth.json";
+  const base = document.documentElement.dataset.base || "/";
+  const CONFIG_URL = `${base}assets/models/earth.json`;
 
   function register(config) {
     if (!window.WebGLModels || !window.PlanetRenderer) {

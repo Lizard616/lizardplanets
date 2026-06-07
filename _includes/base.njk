@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="{{ site.language }}">
+<html lang="{{ site.language }}" data-base="{{ sitePathPrefix }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/images/Site-favicon.png" type="image/png" />
+    <link rel="icon" href="/images/site-favicon.png" type="image/png" />
     {# Prefer explicit frontmatter title; fallback helps rare layout/engine edge cases (e.g. dev serve). #}
     {% set _leafTitle = title %}
     {% if not _leafTitle and page.fileSlug %}
@@ -29,6 +29,7 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     />
+    <style>:root { --site-bg-image: url("/images/site-background-dark.webp"); }</style>
     <link rel="stylesheet" href="/assets/styles.css" />
     {% if pagefindSearch %}<link rel="stylesheet" href="/pagefind/pagefind-component-ui.css" />{% endif %}
     <script defer src="/assets/theme.js"></script>

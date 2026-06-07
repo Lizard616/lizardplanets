@@ -16,8 +16,7 @@ module.exports = {
   description: "about fictional worlds and their languages",
   language: "en",
   // Absolute base URL (no trailing slash). Used for og:url and og:image.
-  // Update this once the domain/GitHub Pages URL is known.
-  url: "",
+  url: "https://lizard616.github.io/lizardplanets",
   legal: {
     textLicense: "Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)",
     imageLicense: "All Rights Reserved"

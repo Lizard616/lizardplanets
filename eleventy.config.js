@@ -1,4 +1,5 @@
 const { exec, execSync } = require("node:child_process");
+const { getPathPrefix } = require("./config/eleventy/pathPrefix");
 const slugify = require("./config/eleventy/slugify");
 const { buildNavTree } = require("./config/eleventy/navTree");
 const { TOC_PLACEHOLDER, injectTocHtml } = require("./config/eleventy/toc");
@@ -151,7 +152,31 @@ module.exports = async function (eleventyConfig) {
     return injectTocHtml(content, this.page?.data || {});
   });
 
+  eleventyConfig.addGlobalData("sitePathPrefix", getPathPrefix());
+
+  // Prefix root-relative URLs for GitHub Pages project sites.
+  eleventyConfig.addTransform("prefix-root-urls", function (content) {
+    const prefix = getPathPrefix();
+    if (prefix === "/") return content;
+    const outPath = this.outputPath || "";
+    if (!outPath.endsWith(".html")) return content;
+    const base = prefix.slice(0, -1);
+    const baseSegment = base.slice(1);
+    const skipPrefix = baseSegment
+      ? `(?:\\/|${baseSegment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\/)`
+      : "\\/";
+    const attrPattern = new RegExp(
+      `(\\s(?:href|src|content)=["'])/(?!(?:${skipPrefix}))`,
+      "g"
+    );
+    const urlPattern = new RegExp(`url\\((["']?)/(?!(?:${skipPrefix}))`, "g");
+    let out = content.replace(attrPattern, `$1${base}/`);
+    out = out.replace(urlPattern, `url($1${base}/`);
+    return out;
+  });
+
   return {
+    pathPrefix: getPathPrefix(),
     dir: {
       input: "content",
       includes: "../_includes",

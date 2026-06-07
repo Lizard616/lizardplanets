@@ -7,6 +7,7 @@ templates:
   - template: Planetary Overview
     title: Ipzamar
     image: ipzamar.jpg
+    model: ipzamar
     affiliations:
       - '[Whirlwinds](/characters/species/main-races/whirlwinds/)'
       - '[Lizards](/characters/species/main-races/lizards/) (2nd party)'

@@ -16,7 +16,7 @@
 
   "body": {
     "planetRadius": 1.0,
-    "atmosphereRadius": 1.07
+    "atmosphereRadius": 1.016
   },
 
   "atmosphere": {
@@ -53,7 +53,7 @@
 
   "sun": {
     "orbitSpeed": 0.06,
-    "elevation": 0.5
+    "elevation": 0.75
   },
 
   "animation": {

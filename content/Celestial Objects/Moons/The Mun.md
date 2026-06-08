@@ -7,6 +7,7 @@ templates:
   - template: Planetary Overview
     title: Mun
     image: the-mun.jpg
+    model: mun
     caption: The Mun's discovery is widely regarded as one of the more important breakthroughs of Kerbal evolution. Granted, it didn't happen all that long ago, but it's still fair to say Kerbals are wiser and more evolved now than they were back then.
     age: 4.57x10⁹
     axial_tilt: 0°

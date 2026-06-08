@@ -16,7 +16,9 @@
 
   "body": {
     "planetRadius": 1.0,
-    "atmosphereRadius": 1.016
+    "atmosphereRadius": 1.016,
+    "bumpStrength": 1.5,
+    "bumpUseNormals": true
   },
 
   "atmosphere": {

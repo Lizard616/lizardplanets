@@ -59,6 +59,10 @@
         exposure: atm.exposure ?? 1.2,
         saturation: atm.saturation ?? 1.2,
       },
+      bump: {
+        strength: body.bumpStrength ?? 3.0,
+        useNormals: body.bumpUseNormals ?? false,
+      },
       camera: {
         initialDistance: initial.distance ?? 2.6,
         initialPhi: initial.phi ?? 0.3,
@@ -231,6 +235,8 @@
     uniform vec3 uRC;
     uniform float uTime;
     uniform float uCloudScrollSpeed;
+    uniform float uBumpStrength;
+    uniform bool uBumpUseNormals;
     out vec4 fragColor;
 
     float ringShadow(vec3 ro, vec3 rd){
@@ -278,7 +284,10 @@
                - texture(uSecbTexture, vUV - vec2(texel.x, 0.0)).a;
       float hY = texture(uSecbTexture, vUV + vec2(0.0, texel.y)).a
                - texture(uSecbTexture, vUV - vec2(0.0, texel.y)).a;
-      vec3 surfaceNormal = normalize(vNormalW - 3.0 * (hX * vTangentW + hY * vBitangentW));
+      vec3 bumpedNormal = normalize(vNormalW - uBumpStrength * (hX * vTangentW + hY * vBitangentW));
+      float height = (texture(uSecbTexture, vUV).a - 0.5) * uBumpStrength * 0.05;
+      vec3 surfacePos = uBumpUseNormals ? vPositionW : vPositionW + vNormalW * height;
+      vec3 surfaceNormal = uBumpUseNormals ? vNormalW : bumpedNormal;
 
       // --- Surface: day diffuse + night emission (SECB green) ---
       vec3 dayColor = texture(uDayTexture, vUV).rgb;
@@ -290,7 +299,7 @@
       vec3 surfaceColor = dayColor + nightColor * nightSide * emissionFactor;
 
       // --- Surface specular (SECB red = ocean mask; tight glossy highlight) ---
-      vec3 viewDirectionW = normalize(uCameraPos - vPositionW);
+      vec3 viewDirectionW = normalize(uCameraPos - surfacePos);
       vec3 halfVectorW = normalize(viewDirectionW + sunDir);
       float specComp = max(0.0, dot(surfaceNormal, halfVectorW));
       specComp = pow(specComp, 128.0) * 1.35;
@@ -981,6 +990,9 @@
       u3f(planetProg, "uRC", RC[0], RC[1], RC[2]);
       u1f(planetProg, "uTime", t);
       u1f(planetProg, "uCloudScrollSpeed", CLOUD_SCROLL);
+      u1f(planetProg, "uBumpStrength", cfg.bump.strength);
+      const bumpUseNormalsLoc = gl.getUniformLocation(planetProg, "uBumpUseNormals");
+      gl.uniform1i(bumpUseNormalsLoc, cfg.bump.useNormals ? 1 : 0);
       // Bind each texture to a unit, then tell the shader which unit to sample.
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texDay);

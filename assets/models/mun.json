@@ -16,7 +16,9 @@
 
   "body": {
     "planetRadius": 1.0,
-    "atmosphereRadius": 0.001
+    "atmosphereRadius": 0.001,
+    "bumpStrength": 10.0,
+    "bumpUseNormals": false
   },
 
   "atmosphere": {
@@ -61,6 +63,6 @@
   },
 
   "mesh": {
-    "sphereResolution": 64
+    "sphereResolution": 128
   }
 }

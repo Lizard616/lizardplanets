@@ -10,7 +10,7 @@
 
   "ring": {
     "innerRadius": 1.22,
-    "outerRadius": 5.51,
+    "outerRadius": 3.35,
     "segments": 128
   },
 
@@ -21,7 +21,7 @@
 
   "atmosphere": {
     "scaleHeights": {
-      "rayleigh": 0.001255704,
+      "rayleigh": 0.003,
       "mie": 0.000188353,
       "ozone": 0.00392403,
       "ozoneFalloff": 0.000784805

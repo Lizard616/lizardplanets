@@ -8,6 +8,7 @@ templates:
   - template: Planetary Overview
     title: Kerbin
     image: kerbin.png
+    model: kerbin
     affiliations:
       - '[Kerbals](/characters/species/main-races/kerbals/)'
     age: 4.57x10⁹

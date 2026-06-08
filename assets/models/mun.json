@@ -16,7 +16,7 @@
 
   "body": {
     "planetRadius": 1.0,
-    "atmosphereRadius": 0.8
+    "atmosphereRadius": 1.0 // No atmosphere
   },
 
   "atmosphere": {

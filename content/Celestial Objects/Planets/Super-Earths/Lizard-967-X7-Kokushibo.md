@@ -8,6 +8,7 @@ templates:
   - template: Planetary Overview
     title: Lizard-967-X7-Kokushibo
     image: lizard-967-x7-kokushibo.jpg
+    model: lizard-967-x7-kokushibo
     affiliations:
       - '[Lizards](/characters/species/main-races/lizards/)'
     age: Similar to [Earth](/celestial-objects/planets/subearths/earth/) (Years not measured)

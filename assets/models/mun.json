@@ -21,10 +21,10 @@
 
   "atmosphere": {
     "scaleHeights": {
-      "rayleigh": 0,
-      "mie": 0,
-      "ozone": 0,
-      "ozoneFalloff": 0
+      "rayleigh": 0.001255704,
+      "mie": 0.000188353,
+      "ozone": 0.00392403,
+      "ozoneFalloff": 0.000784805
     },
     "coefficients": {
       "rayleigh": [36.9518, 86.0085, 210.8801],

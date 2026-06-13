@@ -818,28 +818,68 @@
     let camPhi = cfg.camera.initialPhi;
     let camTheta = cfg.camera.initialTheta;
     let camDistVel = 0, camPhiVel = 0, camThetaVel = 0;
-    let mDown = false, lx = 0, ly = 0;
+    // Active pointer tracking: pointerId → {x, y}
+    const activePointers = new Map();
     let prevNow = performance.now();
 
-    canvas.addEventListener("mousedown", (e) => {
-      mDown = true;
-      lx = e.clientX;
-      ly = e.clientY;
+    function isDragging() { return activePointers.size === 1; }
+    function isPinching() { return activePointers.size === 2; }
+
+    // Returns the distance between the two active touch points.
+    function pinchDist() {
+      const [a, b] = activePointers.values();
+      const dx = a.x - b.x, dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    let pinchPrevDist = 0;
+
+    canvas.addEventListener("pointerdown", (e) => {
+      canvas.setPointerCapture(e.pointerId);
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       camThetaVel = 0;
       camPhiVel = 0;
+      if (isPinching()) {
+        pinchPrevDist = pinchDist();
+      }
     });
-    window.addEventListener("mouseup", () => { mDown = false; });
-    canvas.addEventListener("mousemove", (e) => {
-      if (!mDown) return;
-      const dx = e.clientX - lx;
-      const dy = e.clientY - ly;
-      camTheta -= dx * CAM_DRAG;
-      camPhi = Math.max(-CAM_PHI_LIMIT, Math.min(CAM_PHI_LIMIT, camPhi + dy * CAM_DRAG));
-      camThetaVel = -dx * CAM_DRAG * CAM_THROW * 60;
-      camPhiVel = dy * CAM_DRAG * CAM_THROW * 60;
-      lx = e.clientX;
-      ly = e.clientY;
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+
+      if (isDragging()) {
+        const prev = activePointers.get(e.pointerId);
+        const dx = e.clientX - prev.x;
+        const dy = e.clientY - prev.y;
+        camTheta -= dx * CAM_DRAG;
+        camPhi = Math.max(-CAM_PHI_LIMIT, Math.min(CAM_PHI_LIMIT, camPhi + dy * CAM_DRAG));
+        camThetaVel = -dx * CAM_DRAG * CAM_THROW * 60;
+        camPhiVel = dy * CAM_DRAG * CAM_THROW * 60;
+      }
+
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (isPinching()) {
+        const dist = pinchDist();
+        if (pinchPrevDist > 0) {
+          // Scale pinch delta to feel similar to mouse wheel zoom.
+          const dz = (pinchPrevDist - dist) * CAM_ZOOM * 4;
+          camDist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, camDist + dz));
+          camDistVel += dz * CAM_THROW * 35;
+        }
+        pinchPrevDist = dist;
+      }
     });
+
+    function releasePointer(e) {
+      activePointers.delete(e.pointerId);
+      if (isPinching()) {
+        pinchPrevDist = pinchDist();
+      }
+    }
+    canvas.addEventListener("pointerup", releasePointer);
+    canvas.addEventListener("pointercancel", releasePointer);
+
     canvas.addEventListener("wheel", (e) => {
       const dz = e.deltaY * CAM_ZOOM;
       camDist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, camDist + dz));
@@ -929,7 +969,7 @@
       const dt = Math.min((now - prevNow) * 0.001, 0.032);
       prevNow = now;
 
-      if (!mDown) {
+      if (activePointers.size === 0) {
         camTheta += camThetaVel * dt;
         camPhi += camPhiVel * dt;
         camDist += camDistVel * dt;

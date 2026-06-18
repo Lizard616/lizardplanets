@@ -1,0 +1,68 @@
+{
+  "slug": "lizard-919-n",
+  "displayName": "Lizard-919-N",
+
+  "textures": {
+    "day": "/assets/textures/lizard-919-n/tex-col.jpg",
+    "secb": "/assets/textures/lizard-919-n/tex-secb.png",
+    "ring": "/assets/textures/lizard-919-n/ring.png"
+  },
+
+  "ring": {
+    "innerRadius": 1.22,
+    "outerRadius": 4.12,
+    "segments": 128
+  },
+
+  "body": {
+    "planetRadius": 1.0,
+    "atmosphereRadius": 1.016,
+    "bumpStrength": 1.5,
+    "bumpUseNormals": true
+  },
+
+  "atmosphere": {
+    "scaleHeights": {
+      "rayleigh": 0.001255704,
+      "mie": 0.000188353,
+      "ozone": 0.00392403,
+      "ozoneFalloff": 0.000784805
+    },
+    "coefficients": {
+      "rayleigh": [31, 83, 91],
+      "mie": [24.8469, 24.8469, 24.8469],
+      "ozone": [3.8226, 11.4678, 0.541535]
+    },
+    "mieG": 0.8,
+    "sunIntensity": 20.0,
+    "exposure": 1.2,
+    "saturation": 1.2
+  },
+
+  "camera": {
+    "initial": {
+      "distance": 2.6,
+      "phi": 0.3,
+      "theta": 0.5
+    },
+    "minDistance": 1.12,
+    "maxDistance": 8,
+    "drag": 0.005,
+    "zoom": 0.002,
+    "damping": 5.5,
+    "throw": 0.32
+  },
+
+  "sun": {
+    "orbitSpeed": 0.06,
+    "elevation": -0.71
+  },
+
+  "animation": {
+    "cloudScrollSpeed": 0.0005
+  },
+
+  "mesh": {
+    "sphereResolution": 64
+  }
+}

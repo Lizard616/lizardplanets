@@ -30,13 +30,21 @@
     },
     "coefficients": {
       "rayleigh": [36.9518, 86.0085, 210.8801],
-      "mie": [24.8469, 24.8469, 24.8469],
+      "mie": [0, 0, 0],
       "ozone": [3.8226, 11.4678, 0.541535]
     },
-    "mieG": 0.8,
+    "mieG": 0.0,
     "sunIntensity": 20.0,
     "exposure": 1.2,
     "saturation": 1.2
+  },
+
+ "bloom": {
+  "enabled": true,
+  "threshold": 0.75,   
+  "strength": 2,    
+  "radius": 5.0,       
+  "passes": 5          
   },
 
   "camera": {

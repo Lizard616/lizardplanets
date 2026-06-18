@@ -84,6 +84,15 @@
       mesh: {
         sphereResolution: mesh.sphereResolution ?? 64,
       },
+      bloom: {
+        enabled: raw.bloom?.enabled ?? true,
+        // threshold is no longer used by the mask-based bloom pipeline (kept
+        // for backward compatibility with existing planet configs).
+        threshold: raw.bloom?.threshold ?? 0.75,
+        strength: raw.bloom?.strength ?? 0.35,
+        radius: raw.bloom?.radius ?? 1.5,
+        passes: raw.bloom?.passes ?? 5,
+      },
     };
   }
 
@@ -237,7 +246,8 @@
     uniform float uCloudScrollSpeed;
     uniform float uBumpStrength;
     uniform bool uBumpUseNormals;
-    out vec4 fragColor;
+    layout(location = 0) out vec4 fragColor;
+    layout(location = 1) out vec4 bloomMask;
 
     float ringShadow(vec3 ro, vec3 rd){
       if(abs(rd.y) < 1e-4) return 1.0;
@@ -315,6 +325,15 @@
       vec3 specColor = mix(vec3(1.0), specTint, specSat);
 
       surfaceColor += secb.r * specColor * (specComp + oceanFresnel) * shadowFactor * ringVis;
+      // Specular bloom mask: only fires near the terminator (low muSun).
+      // terminatorBloom peaks at muSun ≈ 0 (the day/night boundary) and falls
+      // off toward full noon (muSun → 1) and is already zeroed on the night side
+      // by daySideVisibility. This produces the golden-hour glint effect without
+      // any bloom contribution from directly sun-lit ocean at noon.
+      float daySideVisibility = smoothstep(-0.05, 0.1, surfaceNdl);
+      float terminatorBloom = smoothstep(0.55, 0.0, muSun); // 1 at terminator, 0 at noon
+      vec3 specOnly = secb.r * specColor * (specComp + oceanFresnel) * shadowFactor * ringVis
+                      * daySideVisibility * terminatorBloom;
 
       // --- Cloud layer: matte diffuse on top (no bump, no specular) ---
       float cloudAlpha = cloudShadeSurface;
@@ -326,6 +345,9 @@
       vec3 finalColor = cloudColor * cloudAlpha + surfaceColor * (1.0 - cloudAlpha);
 
       fragColor = vec4(finalColor, 1.0);
+      // Bloom mask: specular glint attenuated by cloud coverage above it — if
+      // clouds occlude the ocean glint, no bloom contribution comes through.
+      bloomMask = vec4(specOnly * (1.0 - cloudAlpha), 1.0);
     }`;
 
     const vsRing = `#version 300 es
@@ -573,6 +595,75 @@
       fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
     }`;
 
+    // ── BLOOM shaders ─────────────────────────────────────────────────────────
+    // Pass A – downsample: copy the planet pass's specular-only mask to a
+    //          half-res buffer (clouds/diffuse terrain/atmosphere glow are
+    //          never in this mask — only ocean/ice specular glints are).
+    // Pass B – separable Gaussian blur (horizontal then vertical).
+    // Pass C – additive composite: scene + blurred bloom.
+    const vsBloom = `#version 300 es
+    in vec2 aPos;
+    out vec2 vUV;
+    void main(){ vUV = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+    // Pass A – box pre-filter: 4-tap 2×2 box sample of the specular mask.
+    //          Acts as a gentle pre-blur that kills sub-pixel aliasing before
+    //          the Gaussian runs, preventing hard edges from the mask scalar.
+    const fsBloomDownsample = `#version 300 es
+    precision highp float;
+    in vec2 vUV;
+    uniform sampler2D uSpecMask;
+    uniform vec2 uTexelSize;
+    out vec4 fragColor;
+    void main(){
+      // 4-tap box at half-texel offsets — equidistant from a 2×2 footprint.
+      vec3 a = texture(uSpecMask, vUV + vec2(-0.5, -0.5) * uTexelSize).rgb;
+      vec3 b = texture(uSpecMask, vUV + vec2( 0.5, -0.5) * uTexelSize).rgb;
+      vec3 c = texture(uSpecMask, vUV + vec2(-0.5,  0.5) * uTexelSize).rgb;
+      vec3 d = texture(uSpecMask, vUV + vec2( 0.5,  0.5) * uTexelSize).rgb;
+      fragColor = vec4((a + b + c + d) * 0.25, 1.0);
+    }`;
+
+    // One-axis 13-tap Gaussian blur (sigma ≈ 3); uDirection = (1,0) or (0,1).
+    // More taps → smoother falloff → no visible banding between bloom regions.
+    const fsBloomBlur = `#version 300 es
+    precision highp float;
+    in vec2 vUV;
+    uniform sampler2D uScene;
+    uniform vec2 uDirection;
+    uniform vec2 uTexelSize;
+    uniform float uRadius;
+    out vec4 fragColor;
+    // 13-tap Gaussian weights (sigma ≈ 3, normalised to sum = 1)
+    const float W[7] = float[](
+      0.1859953, 0.1693517, 0.1260172,
+      0.0767913, 0.0381569, 0.0155021, 0.0051409
+    );
+    void main(){
+      vec2 step = uDirection * uTexelSize * uRadius;
+      vec3 acc = texture(uScene, vUV).rgb * W[0];
+      for(int i = 1; i < 7; i++){
+        vec2 off = float(i) * step;
+        acc += texture(uScene, vUV + off).rgb * W[i];
+        acc += texture(uScene, vUV - off).rgb * W[i];
+      }
+      fragColor = vec4(acc, 1.0);
+    }`;
+
+    // Additive composite: scene + bloom.
+    const fsBloomComposite = `#version 300 es
+    precision highp float;
+    in vec2 vUV;
+    uniform sampler2D uScene;
+    uniform sampler2D uBloom;
+    uniform float uStrength;
+    out vec4 fragColor;
+    void main(){
+      vec3 scene = texture(uScene, vUV).rgb;
+      vec3 bloom = texture(uBloom, vUV).rgb;
+      fragColor = vec4(clamp(scene + bloom * uStrength, 0.0, 1.0), 1.0);
+    }`;
+
     // ── Shader programs ───────────────────────────────────────────────────────
     // Shaders are compiled separately, then linked into a program object.
     // Only linked programs can be activated with gl.useProgram().
@@ -602,6 +693,9 @@
     const planetProg = link(compile(gl.VERTEX_SHADER, vsPlanet), compile(gl.FRAGMENT_SHADER, fsPlanet));
     const ringProg = link(compile(gl.VERTEX_SHADER, vsRing), compile(gl.FRAGMENT_SHADER, fsRing));
     const atmoProg = link(compile(gl.VERTEX_SHADER, vsAtmo), compile(gl.FRAGMENT_SHADER, fsAtmo));
+    const bloomDownsampleProg = link(compile(gl.VERTEX_SHADER, vsBloom), compile(gl.FRAGMENT_SHADER, fsBloomDownsample));
+    const bloomBlurProg       = link(compile(gl.VERTEX_SHADER, vsBloom), compile(gl.FRAGMENT_SHADER, fsBloomBlur));
+    const bloomCompProg       = link(compile(gl.VERTEX_SHADER, vsBloom), compile(gl.FRAGMENT_SHADER, fsBloomComposite));
 
     // ── Geometry: unit sphere mesh ────────────────────────────────────────────
     // Positions, normals, and UVs live in separate buffer objects (VBOs).
@@ -681,8 +775,8 @@
 
     // ── Framebuffer object (FBO) ──────────────────────────────────────────────
     // An FBO redirects rendering away from the canvas into textures.
-    // Pass 1 writes color + depth here; pass 2 samples them as input.
-    let fbo = null, fboColor = null, fboDepth = null, fboW = 0, fboH = 0;
+    // Pass 1 writes color + depth + a bloom mask here; pass 2 samples them.
+    let fbo = null, fboColor = null, fboDepth = null, fboBloomMask = null, fboW = 0, fboH = 0;
     function ensureFBO(w, h) {
       if (w <= 0 || h <= 0) return;
       if (fboW === w && fboH === h) return;
@@ -692,11 +786,21 @@
         gl.deleteFramebuffer(fbo);
         gl.deleteTexture(fboColor);
         gl.deleteTexture(fboDepth);
+        gl.deleteTexture(fboBloomMask);
       }
 
-      // Color attachment: RGBA8 stores the lit planet image.
+      // Color attachment 0: RGBA8 stores the lit planet image.
       fboColor = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, fboColor);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+      // Color attachment 1: isolated specular-only bloom contribution (no clouds).
+      fboBloomMask = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, fboBloomMask);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -714,12 +818,52 @@
       fbo = gl.createFramebuffer();
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboColor, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, fboBloomMask, 0);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, fboDepth, 0);
+      gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
       if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
         throw new Error("FBO incomplete");
       }
       // null = default framebuffer (the canvas itself).
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    // ── Bloom FBOs ───────────────────────────────────────────────────────────
+    // Two ping-pong buffers for the separable blur passes, plus an extract buffer.
+    // All at half resolution to improve performance and widen the blur kernel.
+    let bloomFboW = 0, bloomFboH = 0;
+    let bloomExtractFbo = null, bloomExtractTex = null;
+    let bloomPingFbo = null, bloomPingTex = null;
+    let bloomPongFbo = null, bloomPongTex = null;
+    // A second FBO holds the final scene (atmo output) so bloom can composite it.
+    let sceneFbo = null, sceneTex = null;
+
+    function makeColorFbo(w, h) {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const fboObj = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fboObj);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return { fbo: fboObj, tex };
+    }
+
+    function ensureBloomFBOs(w, h) {
+      if (bloomFboW === w && bloomFboH === h) return;
+      bloomFboW = w; bloomFboH = h;
+
+      [bloomExtractFbo, bloomPingFbo, bloomPongFbo, sceneFbo].forEach(f => f && gl.deleteFramebuffer(f));
+      [bloomExtractTex, bloomPingTex, bloomPongTex, sceneTex].forEach(t => t && gl.deleteTexture(t));
+
+      ({ fbo: bloomExtractFbo, tex: bloomExtractTex } = makeColorFbo(w, h));
+      ({ fbo: bloomPingFbo,    tex: bloomPingTex    } = makeColorFbo(w, h));
+      ({ fbo: bloomPongFbo,    tex: bloomPongTex    } = makeColorFbo(w, h));
+      ({ fbo: sceneFbo,        tex: sceneTex        } = makeColorFbo(w, h));
     }
 
     // ── Math: camera matrices ───────────────────────────────────────────────────
@@ -944,6 +1088,10 @@
     const SUN_ELEVATION = cfg.sun.elevation;
     const RING_INNER_R = cfg.ring.innerRadius;
     const RING_OUTER_R = cfg.ring.outerRadius;
+    const BLOOM_ENABLED    = cfg.bloom.enabled;
+    const BLOOM_STRENGTH   = cfg.bloom.strength;
+    const BLOOM_RADIUS     = cfg.bloom.radius;
+    const BLOOM_PASSES     = cfg.bloom.passes;
 
     const proj = mat4(), view = mat4(), mvp = mat4(), invProj = mat4(), invView = mat4();
     const model = identity(mat4());
@@ -1048,8 +1196,15 @@
       // Issue the draw: indexed triangles assembled from the sphere EBO.
       gl.drawElements(gl.TRIANGLES, sph.idx.length, gl.UNSIGNED_INT, 0);
 
-      // ── Pass 2: composite atmosphere to the canvas ──────────────────────────
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null); // back to default (visible canvas)
+      // ── Pass 2: composite atmosphere ──────────────────────────────────────
+      // When bloom is on, render the atmosphere into sceneFbo (not the canvas)
+      // so the bloom passes can sample it before the final composite.
+      if (BLOOM_ENABLED) {
+        ensureBloomFBOs(W, H);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFbo);
+      } else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
       gl.viewport(0, 0, W, H);
       gl.disable(gl.DEPTH_TEST); // full-screen quad has no depth ordering needs
       gl.clearColor(0, 0, 0, 1);
@@ -1106,6 +1261,65 @@
       u1i(ringProg, "uRingTexture", 0);
       gl.drawElements(gl.TRIANGLES, ring.idx.length, gl.UNSIGNED_INT, 0);
       gl.disable(gl.BLEND);
+      }
+
+      // ── Bloom passes (A: box pre-filter → B: blur → C: composite) ──────────
+      if (BLOOM_ENABLED) {
+
+        // A — 4-tap box pre-filter: softens the mask's hard scalar edges before
+        // the Gaussian runs, preventing banding at terminator boundaries.
+        gl.bindFramebuffer(gl.FRAMEBUFFER, bloomExtractFbo);
+        gl.viewport(0, 0, W, H);
+        gl.disable(gl.BLEND);
+        gl.useProgram(bloomDownsampleProg);
+        attr(bloomDownsampleProg, "aPos", quadBuf, 2);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, fboBloomMask);
+        u1i(bloomDownsampleProg, "uSpecMask", 0);
+        gl.uniform2f(gl.getUniformLocation(bloomDownsampleProg, "uTexelSize"), 1.0 / W, 1.0 / H);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        // B — Ping-pong separable Gaussian blur (horizontal then vertical, N times).
+        let srcTex = bloomExtractTex;
+        for (let pass = 0; pass < BLOOM_PASSES; pass++) {
+          // Horizontal blur: src → ping
+          gl.bindFramebuffer(gl.FRAMEBUFFER, bloomPingFbo);
+          gl.viewport(0, 0, W, H);
+          gl.useProgram(bloomBlurProg);
+          attr(bloomBlurProg, "aPos", quadBuf, 2);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, srcTex);
+          u1i(bloomBlurProg, "uScene", 0);
+          gl.uniform2f(gl.getUniformLocation(bloomBlurProg, "uDirection"), 1.0, 0.0);
+          gl.uniform2f(gl.getUniformLocation(bloomBlurProg, "uTexelSize"), 1.0 / W, 1.0 / H);
+          u1f(bloomBlurProg, "uRadius", BLOOM_RADIUS);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+          // Vertical blur: ping → pong
+          gl.bindFramebuffer(gl.FRAMEBUFFER, bloomPongFbo);
+          gl.viewport(0, 0, W, H);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, bloomPingTex);
+          gl.uniform2f(gl.getUniformLocation(bloomBlurProg, "uDirection"), 0.0, 1.0);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+          srcTex = bloomPongTex;
+        }
+
+        // C — Composite: scene + bloom → canvas
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, W, H);
+        gl.disable(gl.BLEND);
+        gl.useProgram(bloomCompProg);
+        attr(bloomCompProg, "aPos", quadBuf, 2);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, sceneTex);
+        u1i(bloomCompProg, "uScene", 0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, srcTex);
+        u1i(bloomCompProg, "uBloom", 1);
+        u1f(bloomCompProg, "uStrength", BLOOM_STRENGTH);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
     }
 
